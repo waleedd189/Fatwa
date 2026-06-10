@@ -336,7 +336,7 @@ async function understandQuestion(raw){
   var prompt='أنت مساعد يفهم الأسئلة الدينية بأي أسلوب عامي أو فصيح.\nأجب بهذا الشكل فقط:\nQUESTION: [السؤال الفقهي بالعربية الفصحى]\nTOPIC: [الموضوع في كلمة أو كلمتين]\nSEARCH: [كلمات البحث في يوتيوب مثل: حكم الأكل في رمضان ابن باز]\n\nالسؤال: '+raw;
   try{
     var text=await callGroq(prompt);
-    var q=text.match(/QUESTION:\s*(.+)/),t=text.match(/TOPIC:\s*(.+)/),s=text.match(/SEARCH:\s*(.+)/)/);
+    var q=text.match(/QUESTION:\s*(.+)/),t=text.match(/TOPIC:\s*(.+)/),s=text.match(/SEARCH:\s*(.+)/);
     return{
       fiqh:q?q[1].trim():raw,
       topic:t?t[1].trim():'',
