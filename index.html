@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مساعد الفتاوى</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/favicon.ico">
+<meta name="theme-color" content="#1D9E75">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="فتوى">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#1D9E75;--green-dark:#0F6E56;--green-light:#E1F5EE;--green-mid:#9FE1CB;
+  --bg:#0a1628;--card:#111d35;--card2:#162240;--border:rgba(255,255,255,0.08);
+  --text:#f0f4ff;--text2:#8fa0c0;--text3:#546a8a;
+  --gold:#c9a84c;--gold-light:#f5e6b8;
+}
+html,body{min-height:100vh;font-family:'Noto Naskh Arabic',Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text);direction:rtl}
+.bg-canvas{position:fixed;top:0;right:0;width:100%;height:100%;z-index:0;overflow:hidden;pointer-events:none}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:0.12;animation:drift 20s ease-in-out infinite}
+.orb1{width:500px;height:500px;background:#1D9E75;top:-100px;right:-100px;animation-delay:0s}
+.orb2{width:400px;height:400px;background:#185FA5;bottom:-100px;left:-100px;animation-delay:-7s}
+.orb3{width:300px;height:300px;background:#7F77DD;top:40%;right:30%;animation-delay:-14s}
+@keyframes drift{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(40px,-30px) scale(1.1)}66%{transform:translate(-20px,40px) scale(0.95)}}
+.stars{position:fixed;top:0;right:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;opacity:0;animation:twinkle var(--d,3s) ease-in-out infinite var(--delay,0s)}
+@keyframes twinkle{0%,100%{opacity:0}50%{opacity:var(--op,0.6)}}
+.app{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:1.5rem 1rem 3rem}
+
+/* install banner */
+.install-banner{display:none;background:linear-gradient(135deg,rgba(29,158,117,0.2),rgba(24,95,165,0.2));border:1px solid rgba(29,158,117,0.3);border-radius:16px;padding:14px 16px;margin-bottom:1rem;align-items:center;gap:12px}
+.install-banner.show{display:flex}
+.install-icon{width:44px;height:44px;border-radius:12px;overflow:hidden;flex-shrink:0}
+.install-icon img{width:100%;height:100%;object-fit:cover}
+.install-info{flex:1}
+.install-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px}
+.install-sub{font-size:12px;color:var(--text2)}
+.install-btns{display:flex;gap:8px;flex-shrink:0}
+.btn-install{padding:8px 16px;border-radius:10px;background:var(--green);color:#fff;border:none;font-size:13px;font-family:'Noto Naskh Arabic',Tahoma,Arial,sans-serif;cursor:pointer;font-weight:600;white-space:nowrap}
+.btn-install:hover{background:var(--green-dark)}
+.btn-dismiss{padding:8px;border-radius:10px;background:transparent;color:var(--text3);border:1px solid var(--border);font-size:13px;cursor:pointer}
+
+.header{text-align:center;padding:2rem 0 1.5rem;margin-bottom:1.5rem}
+.logo-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px}
+.logo{width:72px;height:72px;border-radius:20px;overflow:hidden;box-shadow:0 0 30px rgba(29,158,117,0.4)}
+.logo img{width:100%;height:100%;object-fit:cover}
+.logo-ring{position:absolute;width:88px;height:88px;border:1px solid rgba(29,158,117,0.3);border-radius:24px;animation:ring-pulse 3s ease-in-out infinite}
+.logo-ring2{position:absolute;width:104px;height:104px;border:1px solid rgba(29,158,117,0.15);border-radius:28px;animation:ring-pulse 3s ease-in-out infinite 0.5s}
+@keyframes ring-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.05);opacity:0.5}}
+h1{font-size:24px;font-weight:600;color:var(--text);letter-spacing:-0.3px;margin-bottom:4px}
+.tagline{font-size:13px;color:var(--text2)}
+
+.input-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:1.25rem;margin-bottom:1rem;transition:border-color 0.3s}
+.input-card:focus-within{border-color:rgba(29,158,117,0.4)}
+.input-label{font-size:12px;color:var(--text3);margin-bottom:8px;display:flex;align-items:center;gap:5px}
+textarea{width:100%;min-height:85px;background:transparent;border:none;outline:none;font-size:15px;font-family:'Noto Naskh Arabic',Tahoma,Arial,sans-serif;color:var(--text);resize:none;line-height:1.7;direction:rtl}
+textarea::placeholder{color:var(--text3)}
+
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:12px;border:1px solid var(--border);font-size:14px;font-family:'Noto Naskh Arabic',Tahoma,Arial,sans-serif;cursor:pointer;font-weight:500;transition:all 0.2s}
+.btn:active{transform:scale(0.97)}
+.btn-mic{background:var(--card);color:var(--text2)}
+.btn-mic:hover{background:var(--card2);color:var(--text)}
+.btn-mic.recording{background:rgba(226,75,74,0.15);border-color:rgba(226,75,74,0.5);color:#F09595;animation:pulse-rec 1s infinite}
+@keyframes pulse-rec{0%,100%{opacity:1}50%{opacity:0.6}}
+.btn-send{background:linear-gradient(135deg,#1D9E75,#0F6E56);color:#fff;border-color:transparent;box-shadow:0 4px 15px rgba(29,158,117,0.3)}
+.btn-send:hover{box-shadow:0 6px 20px rgba(29,158,117,0.45)}
+.btn-send:disabled{opacity:0.5;cursor:not-allowed;box-shadow:none}
+
+.answer-wrap{display:none}
+.answer-wrap.visible{display:block}
+.steps-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:1.25rem;margin-bottom:1rem}
+.step{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.step:last-child{border-bottom:none;padding-bottom:0}
+.step:first-child{padding-top:0}
+.step-dot{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;transition:all 0.3s}
+.step-dot.waiting{background:rgba(255,255,255,0.04);color:var(--text3)}
+.step-dot.active{background:rgba(29,158,117,0.15);color:var(--green);animation:pulse-dot 1.2s ease-in-out infinite}
+.step-dot.done{background:rgba(29,158,117,0.2);color:var(--green)}
+@keyframes pulse-dot{0%,100%{box-shadow:0 0 0 0 rgba(29,158,117,0.4)}50%{box-shadow:0 0 0 8px rgba(29,158,117,0)}}
+.sl{font-size:13px;color:var(--text);font-weight:500}
+.ss{font-size:11px;color:var(--text3);margin-top:2px}
+
+.fiqh-card{background:rgba(29,158,117,0.08);border:1px solid rgba(29,158,117,0.2);border-radius:14px;padding:12px 14px;margin-bottom:1rem;display:none}
+.fiqh-lbl{font-size:11px;color:var(--green);font-weight:600;margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.fiqh-txt{font-size:14px;color:var(--green-mid);font-weight:500}
+
+.top-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:12px}
+.top-bar span{font-size:13px;color:var(--text2)}
+.btn-speak-all{display:flex;align-items:center;gap:6px;padding:7px 16px;border-radius:20px;border:1px solid rgba(29,158,117,0.3);font-size:13px;font-family:'Noto Naskh Arabic',Tahoma,Arial,sans-serif;cursor:pointer;background:rgba(29,158,117,0.1);color:var(--green);font-weight:500;transition:all 0.2s}
+.btn-speak-all.speaking{background:var(--green);color:#fff;border-color:var(--green)}
+.opinion-card{background:var(--card);border:1px solid var(--border);border-radius:16px;margin-bottom:12px;overflow:hidden;transition:border-color 0.2s}
+.opinion-card:hover{border-color:rgba(255,255,255,0.12)}
+.opinion-header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.type-badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;white-space:nowrap}
+.type-text{background:rgba(127,119,221,0.15);color:#AFA9EC}
+.type-video{background:rgba(226,75,74,0.12);color:#F09595}
+.opinion-title{font-size:14px;font-weight:600;color:var(--text)}
+.opinion-body{padding:12px 14px;font-size:14px;line-height:1.9;color:var(--text2)}
+.video-section{border-top:1px solid var(--border)}
+.video-wrap{position:relative;padding-bottom:56.25%;height:0}
+.video-wrap iframe{position:absolute;top:0;right:0;width:100%;height:100%;border:none}
+.opinion-footer{padding:10px 14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.src-name{font-size:12px;color:var(--text3);display:flex;align-items:center;gap:5px}
+.source-link{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;background:rgba(29,158,117,0.15);color:var(--green);text-decoration:none;font-size:12px;font-weight:600;border:1px solid rgba(29,158,117,0.25);transition:all 0.2s}
+.source-link:hover{background:rgba(29,158,117,0.25)}
+.summary-card{background:rgba(29,158,117,0.07);border:1px solid rgba(29,158,117,0.2);border-radius:16px;padding:14px;margin-bottom:12px}
+.summary-lbl{font-size:12px;color:var(--green);font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.summary-txt{font-size:14px;color:#9FE1CB;line-height:1.8}
+.hadiths-section{margin-bottom:12px}
+.hadiths-title{font-size:13px;font-weight:600;color:var(--gold);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.hadith-card{background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.15);border-radius:14px;padding:12px 14px;margin-bottom:8px}
+.hadith-text{font-size:14px;line-height:1.9;color:var(--text2);font-style:italic}
+.hadith-grade{display:inline-block;margin-top:6px;font-size:11px;padding:2px 10px;border-radius:10px;font-weight:600}
+.grade-sahih{background:rgba(29,158,117,0.15);color:var(--green)}
+.grade-hasan{background:rgba(56,138,221,0.15);color:#85B7EB}
+.grade-daif{background:rgba(226,75,74,0.12);color:#F09595}
+.dorar-link{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--gold);text-decoration:none;margin-top:6px;opacity:0.7}
+.dorar-link:hover{opacity:1}
+.examples{margin-top:1.5rem}
+.examples-lbl{font-size:12px;color:var(--text3);margin-bottom:8px}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{font-size:12px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;font-family:'Noto Naskh Arabic',Tahoma,Arial,sans-serif;transition:all 0.2s}
+.chip:hover{border-color:rgba(29,158,117,0.4);color:var(--green)}
+.mic-msg{font-size:12px;color:#F09595;text-align:center;margin-top:6px;min-height:18px}
+</style>
+</head>
+<body>
+<div class="bg-canvas">
+  <div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div>
+</div>
+<div class="stars" id="stars"></div>
+
+<div class="app">
+  <!-- بانر التثبيت -->
+  <div class="install-banner" id="installBanner">
+    <div class="install-icon"><img src="icon-192.png" alt="فتوى"></div>
+    <div class="install-info">
+      <div class="install-title">ثبّت التطبيق على جهازك</div>
+      <div class="install-sub">وصول سريع بدون متصفح</div>
+    </div>
+    <div class="install-btns">
+      <button class="btn-install" onclick="installApp()">تثبيت</button>
+      <button class="btn-dismiss" onclick="dismissInstall()"><i class="ti ti-x"></i></button>
+    </div>
+  </div>
+
+  <div class="header">
+    <div class="logo-wrap">
+      <div class="logo-ring2"></div>
+      <div class="logo-ring"></div>
+      <div class="logo"><img src="icon-192.png" alt="فتوى"></div>
+    </div>
+    <h1>مساعد الفتاوى</h1>
+    <p class="tagline">اسأل بأي أسلوب — عامي أو فصيح</p>
+  </div>
+
+  <div class="input-card">
+    <div class="input-label"><i class="ti ti-message-circle" style="font-size:13px"></i> سؤالك</div>
+    <textarea id="q" placeholder="مثال: ينفع آكل وأنا صايم؟ أو هل يجوز الصيام في السفر؟"></textarea>
+    <div class="mic-msg" id="micMsg"></div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-mic" id="micBtn" onclick="toggleMic()">
+      <i class="ti ti-microphone"></i>
+      <span id="micLbl">سجّل سؤالك</span>
+    </button>
+    <button class="btn btn-send" id="sendBtn" onclick="ask()">
+      <i class="ti ti-send"></i> إرسال
+    </button>
+  </div>
+
+  <div class="answer-wrap" id="ansWrap">
+    <div id="stepsBox" class="steps-card" style="display:none">
+      <div class="step">
+        <div class="step-dot active" id="si1"><i class="ti ti-brain"></i></div>
+        <div><div class="sl">فهم السؤال</div><div class="ss">تحليل وتحويل للصيغة الفقهية</div></div>
+      </div>
+      <div class="step">
+        <div class="step-dot waiting" id="si2"><i class="ti ti-search"></i></div>
+        <div><div class="sl">البحث في الفتاوى</div><div class="ss">islamqa · dar-alifta · dorar · يوتيوب</div></div>
+      </div>
+      <div class="step">
+        <div class="step-dot waiting" id="si3"><i class="ti ti-book"></i></div>
+        <div><div class="sl">الأحاديث ذات الصلة</div><div class="ss">الدرر السنية</div></div>
+      </div>
+    </div>
+    <div id="fiqhCard" class="fiqh-card">
+      <div class="fiqh-lbl"><i class="ti ti-transform" style="font-size:12px"></i> تم فهم سؤالك على أنه</div>
+      <div class="fiqh-txt" id="fiqhText"></div>
+    </div>
+    <div id="answersContent"></div>
+  </div>
+
+  <div class="examples">
+    <div class="examples-lbl">جرّب اكتب بأي أسلوب:</div>
+    <div class="chips">
+      <button class="chip" onclick="setQ(this)">ينفع آكل وأنا صايم؟</button>
+      <button class="chip" onclick="setQ(this)">هل لازم أتوضأ عشان أمسك الموبايل فيه قرآن؟</button>
+      <button class="chip" onclick="setQ(this)">ناسي وشربت في رمضان يبطل صيامي؟</button>
+      <button class="chip" onclick="setQ(this)">ما حكم الزكاة على الذهب؟</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// نجوم
+(function(){
+  var s=document.getElementById('stars');
+  for(var i=0;i<80;i++){
+    var el=document.createElement('div');el.className='star';
+    el.style.cssText='top:'+Math.random()*100+'%;right:'+Math.random()*100+'%;--d:'+(2+Math.random()*4)+'s;--delay:-'+(Math.random()*5)+'s;--op:'+(0.3+Math.random()*0.5);
+    s.appendChild(el);
+  }
+})();
+
+// PWA
+var deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();deferredPrompt=e;
+  document.getElementById('installBanner').classList.add('show');
+});
+window.addEventListener('appinstalled',function(){
+  document.getElementById('installBanner').classList.remove('show');
+});
+function installApp(){
+  if(!deferredPrompt)return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(function(r){
+    if(r.outcome==='accepted') document.getElementById('installBanner').classList.remove('show');
+    deferredPrompt=null;
+  });
+}
+function dismissInstall(){document.getElementById('installBanner').classList.remove('show');}
+
+// Service Worker
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').then(function(){console.log('SW registered');});
+}
+
+// صوت
+var rec=null,isRec=false,speaking=false,selectedVoice=null,speechRate=0.9,fullSpeakText='';
+var allVoices=[];
+function loadVoices(){
+  allVoices=speechSynthesis.getVoices();
+  selectedVoice=allVoices.find(function(v){return v.lang.startsWith('ar');})||allVoices[0]||null;
+}
+speechSynthesis.onvoiceschanged=loadVoices;setTimeout(loadVoices,500);
+
+function stopSpeak(){speechSynthesis.cancel();speaking=false;var b=document.getElementById('speakAllBtn');if(b){b.classList.remove('speaking');b.innerHTML='<i class="ti ti-volume"></i> استمع للكل';}}
+function speakAll(){
+  if(speaking){stopSpeak();return;}
+  if(!fullSpeakText)return;
+  var u=new SpeechSynthesisUtterance(fullSpeakText);
+  u.lang='ar-SA';u.rate=0.9;if(selectedVoice)u.voice=selectedVoice;
+  u.onstart=function(){speaking=true;var b=document.getElementById('speakAllBtn');if(b){b.classList.add('speaking');b.innerHTML='<i class="ti ti-player-stop"></i> إيقاف';}};
+  u.onend=u.onerror=function(){speaking=false;var b=document.getElementById('speakAllBtn');if(b){b.classList.remove('speaking');b.innerHTML='<i class="ti ti-volume"></i> استمع للكل';}};
+  speechSynthesis.speak(u);
+}
+
+function setQ(el){document.getElementById('q').value=el.textContent;}
+function toggleMic(){
+  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){document.getElementById('micMsg').textContent='استخدم Chrome للتسجيل الصوتي';return;}
+  isRec?stopRec():startRec();
+}
+function startRec(){
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  rec=new SR();rec.lang='ar-EG';rec.interimResults=true;
+  rec.onstart=function(){isRec=true;document.getElementById('micBtn').classList.add('recording');document.getElementById('micLbl').textContent='جاري التسجيل...';document.getElementById('micMsg').textContent='تكلم الآن...';};
+  rec.onresult=function(e){document.getElementById('q').value=Array.from(e.results).map(function(r){return r[0].transcript;}).join('');};
+  rec.onerror=function(){document.getElementById('micMsg').textContent='حدث خطأ، حاول مرة أخرى';stopRec();};
+  rec.onend=stopRec;rec.start();
+}
+function stopRec(){isRec=false;if(rec)rec.stop();document.getElementById('micBtn').classList.remove('recording');document.getElementById('micLbl').textContent='سجّل سؤالك';document.getElementById('micMsg').textContent='';}
+
+async function ask(){
+  var q=document.getElementById('q').value.trim();if(!q)return;
+  document.getElementById('sendBtn').disabled=true;
+  stopSpeak();
+  document.getElementById('ansWrap').classList.add('visible');
+  document.getElementById('answersContent').innerHTML='';
+  document.getElementById('fiqhCard').style.display='none';
+  document.getElementById('stepsBox').style.display='block';
+  fullSpeakText='';
+  try{
+    var r=await fetch('http://localhost:8000/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});
+    var d=await r.json();
+    document.getElementById('stepsBox').style.display='none';
+    if(d.fiqh_question&&d.fiqh_question!==q){
+      document.getElementById('fiqhText').textContent=d.fiqh_question;
+      document.getElementById('fiqhCard').style.display='block';
+    }
+    renderAnswers(d);
+  }catch(e){
+    document.getElementById('stepsBox').style.display='none';
+    document.getElementById('answersContent').innerHTML='<div style="background:rgba(226,75,74,0.1);border:1px solid rgba(226,75,74,0.2);border-radius:14px;padding:1rem;color:#F09595;font-size:14px">حدث خطأ في الاتصال بالسيرفر.</div>';
+  }
+  document.getElementById('sendBtn').disabled=false;
+}
+
+function renderAnswers(d){
+  var container=document.getElementById('answersContent');
+  var opinions=d.opinions||[],summary=d.summary||'',hadiths=d.hadiths||[];
+  var html='';
+  var counts={text:0,video:0};
+  opinions.forEach(function(op){counts[op.type]=(counts[op.type]||0)+1;});
+  var tags=[];
+  if(counts.text)tags.push(counts.text+' فتوى');
+  if(counts.video)tags.push(counts.video+' فيديو');
+  if(hadiths.length)tags.push(hadiths.length+' حديث');
+  html+='<div class="top-bar"><span>'+opinions.length+' نتائج'+(tags.length?' — '+tags.join(' · '):'')+'</span><button class="btn-speak-all" id="speakAllBtn" onclick="speakAll()"><i class="ti ti-volume"></i> استمع للكل</button></div>';
+  opinions.forEach(function(op){
+    var tL=op.type==='video'?'فيديو':'فتوى مكتوبة',tC=op.type==='video'?'type-video':'type-text',tI=op.type==='video'?'ti-brand-youtube':'ti-file-text';
+    html+='<div class="opinion-card"><div class="opinion-header"><span class="type-badge '+tC+'"><i class="ti '+tI+'" style="font-size:11px"></i> '+tL+'</span><span class="opinion-title">'+esc(op.title)+'</span></div>';
+    html+='<div class="opinion-body">'+esc(op.text)+'</div>';
+    if(op.type==='video'&&op.youtube_id){html+='<div class="video-section"><div class="video-wrap"><iframe src="https://www.youtube.com/embed/'+esc(op.youtube_id)+'?rel=0" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe></div></div>';}
+    html+='<div class="opinion-footer">';
+    if(op.source)html+='<div class="src-name"><i class="ti ti-world" style="font-size:13px;color:var(--green)"></i>'+esc(op.source)+'</div>';
+    if(op.link){var lbl=op.type==='video'?'شاهد على يوتيوب':'اقرأ الفتوى كاملة';html+='<a class="source-link" href="'+esc(op.link)+'" target="_blank"><i class="ti ti-external-link" style="font-size:12px"></i> '+lbl+'</a>';}
+    html+='</div></div>';
+    fullSpeakText+=op.title+'. '+op.text+'. ';
+  });
+  if(summary){html+='<div class="summary-card"><div class="summary-lbl"><i class="ti ti-check" style="font-size:13px"></i> الخلاصة العملية</div><div class="summary-txt">'+esc(summary)+'</div></div>';fullSpeakText+='الخلاصة: '+summary+'. ';}
+  if(hadiths.length){
+    html+='<div class="hadiths-section"><div class="hadiths-title"><i class="ti ti-book" style="font-size:15px"></i> أحاديث ذات صلة — الدرر السنية</div>';
+    hadiths.forEach(function(h){
+      var gc='',gt='';
+      if(h.grade==='صحيح'){gc='grade-sahih';gt='صحيح';}else if(h.grade==='حسن'){gc='grade-hasan';gt='حسن';}else if(h.grade==='ضعيف'){gc='grade-daif';gt='ضعيف';}
+      html+='<div class="hadith-card"><div class="hadith-text">'+esc(h.text)+'</div>';
+      if(gt)html+='<span class="hadith-grade '+gc+'">'+gt+'</span>';
+      html+='<br><a class="dorar-link" href="https://dorar.net" target="_blank"><i class="ti ti-external-link" style="font-size:11px"></i> الدرر السنية</a></div>';
+      fullSpeakText+=h.text+'. ';
+    });
+    html+='</div>';
+  }
+  container.innerHTML=html;
+}
+function esc(t){var d=document.createElement('div');d.textContent=t||'';return d.innerHTML;}
+</script>
+</body>
+</html>
