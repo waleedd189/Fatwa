@@ -204,9 +204,9 @@ textarea::placeholder{color:var(--text3)}
 
 <script>
 // ===== CONFIG =====
-var GEMINI_KEY = "AIzaSyDlOIa-HOH9Tqz9fkO6V728GKhRnQhA-9o";
+var GROQ_KEY = "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";
 var YOUTUBE_KEY = "AIzaSyDEzPT5eFdjB56A4961QEysvRAKpYIeXr0";
-var GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + GEMINI_KEY;
+var GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 // ===== نجوم =====
 (function(){
@@ -302,17 +302,21 @@ function setStep(n){
   }
 }
 
-// ===== Gemini call =====
-async function callGemini(prompt, useSearch){
+// ===== Groq call =====
+async function callGroq(prompt){
   var body={
-    contents:[{role:'user',parts:[{text:prompt}]}],
-    generationConfig:{maxOutputTokens:3000,temperature:0.3}
+    model:'llama-3.3-70b-versatile',
+    messages:[
+      {role:'system',content:'أنت مساعد إسلامي متخصص في الفقه. تجيب بالعربية الفصحى البسيطة فقط بدون Markdown.'},
+      {role:'user',content:prompt}
+    ],
+    max_tokens:3000,
+    temperature:0.3
   };
-  if(useSearch) body.tools=[{google_search:{}}];
-  var r=await fetch(GEMINI_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  var r=await fetch(GROQ_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+GROQ_KEY},body:JSON.stringify(body)});
   var d=await r.json();
   if(d.error) throw new Error(d.error.message);
-  return d.candidates[0].content.parts[0].text;
+  return d.choices[0].message.content;
 }
 
 // ===== YouTube =====
@@ -358,7 +362,7 @@ async function searchDorar(keywords){
 async function understandQuestion(raw){
   var prompt='أنت مساعد يفهم الأسئلة الدينية بأي أسلوب عامي أو فصيح.\nأجب بهذا الشكل فقط:\nQUESTION: [السؤال الفقهي بالعربية الفصحى]\nTOPIC: [الموضوع في كلمة أو كلمتين]\nSEARCH: [كلمات البحث في يوتيوب مثل: حكم الأكل في رمضان ابن باز]\nHADITH_SEARCH: [كلمات للبحث في الأحاديث مثل: الصيام رمضان]\n\nالسؤال: '+raw;
   try{
-    var text=await callGemini(prompt,false);
+    var text=await callGroq(prompt);
     var q=text.match(/QUESTION:\s*(.+)/),t=text.match(/TOPIC:\s*(.+)/),s=text.match(/SEARCH:\s*(.+)/),h=text.match(/HADITH_SEARCH:\s*(.+)/);
     return{
       fiqh:q?q[1].trim():raw,
@@ -372,7 +376,7 @@ async function understandQuestion(raw){
 // ===== search fatwas =====
 async function searchFatwas(fiqhQ){
   var prompt='أنت مساعد متخصص في الفقه الإسلامي.\nابحث على الإنترنت عن فتاوى للسؤال من مواقع موثوقة مثل islamqa.info أو dar-alifta.org أو dorar.net أو islamweb.net\nقدّم النتائج بهذا الشكل:\nOPINIONS_START\nOPINION_START\nالعنوان: [اسم الموقع أو العالم]\nالنص: [ملخص الفتوى في 2-3 جمل]\nالمصدر_النص: [اسم الموقع]\nالرابط: [رابط الصفحة أو none]\nOPINION_END\nOPINIONS_END\nSUMMARY_START\n[خلاصة عملية في جملة أو جملتين]\nSUMMARY_END\nقواعد: لا Markdown - من 2 إلى 3 نتائج - ابحث فعلاً - عربي فصيح بسيط\n\nالسؤال: '+fiqhQ;
-  return await callGemini(prompt,true);
+  return await callGroq(prompt);
 }
 
 // ===== parse fatwas =====
