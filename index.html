@@ -347,7 +347,7 @@ async function understandQuestion(raw){
 
 // ===== search fatwas =====
 async function searchFatwas(fiqhQ){
-  var prompt='أنت مساعد متخصص في الفقه الإسلامي.\nابحث على الإنترنت عن فتاوى للسؤال من مواقع موثوقة مثل islamqa.info أو dar-alifta.org أو dorar.net أو islamweb.net\nقدّم النتائج بهذا الشكل:\nOPINIONS_START\nOPINION_START\nالعنوان: [اسم الموقع أو العالم]\nالنص: [ملخص الفتوى في 2-3 جمل]\nالمصدر_النص: [اسم الموقع]\nالرابط: [رابط الصفحة أو none]\nOPINION_END\nOPINIONS_END\nSUMMARY_START\n[خلاصة عملية في جملة أو جملتين]\nSUMMARY_END\nقواعد: لا Markdown - من 2 إلى 3 نتائج - ابحث فعلاً - عربي فصيح بسيط\n\nالسؤال: '+fiqhQ;
+  var prompt='أنت مساعد متخصص في الفقه الإسلامي. لديك معرفة واسعة بفتاوى العلماء.\nقدّم 3 فتاوى للسؤال مع روابط حقيقية من مواقع موثوقة.\nروابط البحث الجاهزة التي يمكنك استخدامها:\n- islamqa: https://islamqa.info/ar/search?q=KEYWORD\n- islamweb: https://www.islamweb.net/ar/fatwa/search/?lang=A&idfatwacat=0&word=KEYWORD\n- dorar: https://dorar.net/feqhia?skey=KEYWORD\nاستبدل KEYWORD بكلمات البحث المناسبة للسؤال.\n\nالشكل المطلوب فقط:\nOPINIONS_START\nOPINION_START\nالعنوان: [اسم العالم أو الموقع]\nالنص: [ملخص الفتوى في 2-3 جمل بدون markdown]\nالمصدر_النص: [اسم الموقع]\nالرابط: [رابط كامل يبدأ بـ https://]\nOPINION_END\nOPINIONS_END\nSUMMARY_START\n[خلاصة عملية في جملة أو جملتين]\nSUMMARY_END\n\nالسؤال: '+fiqhQ;
   return await callGroq(prompt);
 }
 
