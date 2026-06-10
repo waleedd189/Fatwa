@@ -228,9 +228,16 @@ textarea::placeholder{color:var(--text3)}
       <div class="input-label"><i class="ti ti-book" style="font-size:13px"></i> نص الحديث</div>
       <textarea id="hadithInput" rows="3" placeholder="مثال: الأعمال بالنيات، أو من غشنا فليس منا، أو حديث عن النية..."></textarea>
     </div>
-    <button class="btn btn-send" id="checkBtn" onclick="checkHadith()" style="width:100%;margin-bottom:1rem">
-      <i class="ti ti-search"></i> تحقق من الحديث
-    </button>
+    <div class="actions" style="margin-bottom:0.75rem">
+      <button class="btn btn-mic" id="hadithMicBtn" onclick="toggleHadithMic()">
+        <i class="ti ti-microphone"></i>
+        <span id="hadithMicLbl">سجّل الحديث</span>
+      </button>
+      <button class="btn btn-send" id="checkBtn" onclick="checkHadith()">
+        <i class="ti ti-search"></i> تحقق من الحديث
+      </button>
+    </div>
+    <div class="mic-msg" id="hadithMicMsg"></div>
     <div id="hadithResult"></div>
   </div>
 </div>
@@ -378,17 +385,73 @@ async function searchDorar(keywords){
     var d=await r.json();
     var html=d.ahadith&&d.ahadith.result?d.ahadith.result:'';
     if(!html)return[];
+    // parse HTML من الـ API
     var tmp=document.createElement('div');
     tmp.innerHTML=html;
-    var texts=tmp.innerText||tmp.textContent||'';
-    var parts=texts.split(/\n+/).filter(function(t){return t.trim().length>40;});
-    return parts.slice(0,3).map(function(t){
-      var grade='';
-      var gm=t.match(/(صحيح|حسن|ضعيف|موضوع)/);
-      if(gm)grade=gm[1];
-      return{text:t.trim(),grade:grade};
-    });
+    var results=[];
+    // كل حديث في عنصر بنفسه
+    var items=tmp.querySelectorAll('.hadith-info, p, div');
+    if(items.length===0){
+      // fallback: نص خام
+      var txt=tmp.innerText||tmp.textContent||'';
+      var parts=txt.split(/\n{2,}/).filter(function(t){return t.trim().length>30;});
+      parts.slice(0,3).forEach(function(t){
+        var gm=t.match(/(صحيح|حسن|ضعيف|موضوع)/);
+        results.push({text:t.trim(),grade:gm?gm[1]:'',link:''});
+      });
+    } else {
+      var seenTexts=[];
+      items.forEach(function(el){
+        var txt=(el.innerText||el.textContent||'').trim();
+        if(txt.length>40&&seenTexts.indexOf(txt)===-1){
+          seenTexts.push(txt);
+          var gm=txt.match(/(صحيح|حسن|ضعيف|موضوع)/);
+          // ابحث عن رابط
+          var a=el.querySelector('a[href*="dorar.net"]');
+          var link=a?a.href:'';
+          results.push({text:txt,grade:gm?gm[1]:'',link:link});
+        }
+      });
+    }
+    return results.slice(0,3);
   }catch(e){console.error('Dorar error:',e);return[];}
+}
+
+// ===== Dorar بحث مباشر بالنص - للتحقق من الحديث =====
+async function searchDorarFull(keywords){
+  try{
+    var url='https://dorar.net/dorar_api.json?skey='+encodeURIComponent(keywords);
+    var r=await fetch(url);
+    var d=await r.json();
+    var html=d.ahadith&&d.ahadith.result?d.ahadith.result:'';
+    if(!html)return[];
+    var tmp=document.createElement('div');
+    tmp.innerHTML=html;
+    var results=[];
+    // استخرج كل الأحاديث مع روابطها
+    var links=tmp.querySelectorAll('a[href]');
+    var hadithLinks={};
+    links.forEach(function(a){
+      if(a.href&&a.href.indexOf('dorar.net/hadith')>-1){
+        var txt=(a.closest&&a.closest('.hadith-info'))||(a.parentElement&&a.parentElement.parentElement);
+        if(txt) hadithLinks[a.href]=(txt.innerText||txt.textContent||'').trim();
+      }
+    });
+    // استخرج النصوص مع الروابط
+    var allText=(tmp.innerText||tmp.textContent||'');
+    var blocks=allText.split(/\n{2,}/).filter(function(t){return t.trim().length>40;});
+    var linkArr=Object.keys(hadithLinks);
+    blocks.slice(0,5).forEach(function(block,i){
+      var gm=block.match(/(صحيح|حسن|ضعيف|موضوع)/);
+      var link=linkArr[i]||'https://dorar.net';
+      results.push({
+        text:block.trim(),
+        grade:gm?gm[1]:'',
+        link:link
+      });
+    });
+    return results;
+  }catch(e){console.error('Dorar full error:',e);return[];}
 }
 
 // ===== understand question =====
@@ -536,6 +599,39 @@ function renderAnswers(d){
 
 function esc(t){var d=document.createElement('div');d.textContent=t||'';return d.innerHTML;}
 
+
+// ===== ميكروفون بوكس الحديث =====
+var hadithRec=null, hadithIsRec=false;
+function toggleHadithMic(){
+  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){
+    document.getElementById('hadithMicMsg').textContent='استخدم Chrome للتسجيل الصوتي';return;
+  }
+  hadithIsRec?stopHadithRec():startHadithRec();
+}
+function startHadithRec(){
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  hadithRec=new SR();hadithRec.lang='ar-EG';hadithRec.interimResults=true;
+  hadithRec.onstart=function(){
+    hadithIsRec=true;
+    document.getElementById('hadithMicBtn').classList.add('recording');
+    document.getElementById('hadithMicLbl').textContent='جاري التسجيل...';
+    document.getElementById('hadithMicMsg').textContent='تكلم الآن...';
+  };
+  hadithRec.onresult=function(e){
+    document.getElementById('hadithInput').value=Array.from(e.results).map(function(r){return r[0].transcript;}).join('');
+  };
+  hadithRec.onerror=function(){document.getElementById('hadithMicMsg').textContent='حدث خطأ، حاول مرة أخرى';stopHadithRec();};
+  hadithRec.onend=stopHadithRec;
+  hadithRec.start();
+}
+function stopHadithRec(){
+  hadithIsRec=false;
+  if(hadithRec)hadithRec.stop();
+  document.getElementById('hadithMicBtn').classList.remove('recording');
+  document.getElementById('hadithMicLbl').textContent='سجّل الحديث';
+  document.getElementById('hadithMicMsg').textContent='';
+}
+
 // ===== التحقق من الحديث =====
 async function checkHadith(){
   var input=document.getElementById('hadithInput').value.trim();
@@ -549,7 +645,7 @@ async function checkHadith(){
     var searchPrompt='أنت مساعد متخصص في علم الحديث.\nكتب المستخدم: "'+input+'"\nاستخرج كلمات بحث مناسبة للبحث في قاعدة بيانات الأحاديث.\nأجب بسطر واحد فقط: كلمات البحث بدون أي شرح.';
     var keywords=await callGroq(searchPrompt);
     keywords=keywords.trim().replace(/[\n\r]/g,' ').substring(0,50);
-    var dorarResults=await searchDorar(keywords);
+    var dorarResults=await searchDorarFull(keywords);
     var dorarText=dorarResults.length?dorarResults.map(function(h){return h.text+(h.grade?' ('+h.grade+')':'');}).join('\n---\n'):'لم يتم العثور على نتائج';
     var analyzePrompt='أنت محدث متخصص في تحقيق الأحاديث.\nالمستخدم سأل عن: "'+input+'"\nنتائج البحث من الدرر السنية:\n'+dorarText+'\nأجب بهذا الشكل فقط:\nHADITH_TEXT: [نص الحديث كاملاً]\nGRADE: [صحيح أو حسن أو ضعيف أو موضوع أو لم يُعثر عليه]\nEXPLANATION: [شرح مختصر في جملة أو جملتين]';
     var analysis=await callGroq(analyzePrompt);
@@ -566,7 +662,7 @@ async function checkHadith(){
     if(grade==='لم يُعثر عليه'||grade==='لم يتم العثور عليه'){
       result.innerHTML='<div class="hcheck-notfound"><i class="ti ti-search" style="font-size:20px;display:block;margin-bottom:8px"></i>لم يُعثر على هذا الحديث في قاعدة الدرر السنية<br><span style="font-size:11px">جرّب صياغة أخرى أو كلمات مختلفة</span></div>';
     }else{
-      result.innerHTML='<div class="hcheck-card '+gradeClass+'"><div class="hcheck-grade '+gradeClass+'"><i class="ti '+gradeIcon+'" style="font-size:13px"></i>'+esc(grade)+'</div><div class="hcheck-text">'+esc(hadithText)+'</div>'+(explanation?'<div class="hcheck-explanation">'+esc(explanation)+'</div>':'')+'<a class="dorar-link" href="https://dorar.net" target="_blank" style="margin-top:8px"><i class="ti ti-external-link" style="font-size:11px"></i> الدرر السنية</a></div>';
+      result.innerHTML='<div class="hcheck-card '+gradeClass+'"><div class="hcheck-grade '+gradeClass+'"><i class="ti '+gradeIcon+'" style="font-size:13px"></i>'+esc(grade)+'</div><div class="hcheck-text">'+esc(hadithText)+'</div>'+(explanation?'<div class="hcheck-explanation">'+esc(explanation)+'</div>':'')+'<a class="dorar-link" href="'+(dorarResults[0]&&dorarResults[0].link?dorarResults[0].link:'https://dorar.net')+'" target="_blank" style="margin-top:8px"><i class="ti ti-external-link" style="font-size:11px"></i> عرض الحديث في الدرر السنية</a></div>';
     }
   }catch(e){
     result.innerHTML='<div style="background:rgba(226,75,74,0.1);border:1px solid rgba(226,75,74,0.2);border-radius:14px;padding:1rem;color:#F09595;font-size:14px">حدث خطأ: '+esc(e.message)+'</div>';
