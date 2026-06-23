@@ -303,7 +303,7 @@ async function ask(){
   document.getElementById('fiqhCard').style.display='none';
   document.getElementById('stepsBox').style.display='block';
   fullSpeakText='';
-
+  
   setStep(1);
   try {
     var r = await fetch(ASK_URL, {
@@ -313,7 +313,7 @@ async function ask(){
     });
     setStep(2);
     setStep(3);
-
+    
     var d = await r.json();
     if(d.error) throw new Error(d.error);
 
@@ -339,14 +339,14 @@ function renderAnswers(d){
   var html='';
   var counts={text:0,video:0,hadith:hadiths.length};
   opinions.forEach(function(op){counts[op.type]=(counts[op.type]||0)+1;});
-
+  
   var tags=[];
   if(counts.text)tags.push(counts.text+' فتوى');
   if(hadiths.length)tags.push(hadiths.length+' حديث');
   if(counts.video)tags.push(counts.video+' فيديو');
-
+  
   html+='<div class="top-bar"><span>'+(opinions.length+hadiths.length)+' نتائج'+(tags.length?' — '+tags.join(' · '):'')+'</span><button class="btn-speak-all" id="speakAllBtn" onclick="speakAll()"><i class="ti ti-volume"></i> استمع للكل</button></div>';
-
+  
   // عرض الأحاديث أولاً
   hadiths.forEach(function(h){
     html+='<div class="opinion-card" style="border-color:rgba(201,168,76,0.3)"><div class="opinion-header"><span class="type-badge" style="background:rgba(201,168,76,0.15);color:var(--gold)"><i class="ti ti-book" style="font-size:11px"></i> حديث نبوي</span><span class="opinion-title">الدرر السنية</span></div>';

@@ -3,8 +3,8 @@ import json, urllib.request, urllib.error, os, re, threading
 from urllib.parse import quote
 from html.parser import HTMLParser
 
-GEMINI_KEY  = "AIzaSyAQ.Ab8RN6JR5WE9PST8cY7as_aWRyBWlQPZ-QQ0kyw5i8eMYKab4w"
-YOUTUBE_KEY = "AIzaSyDEzPT5eFdjB56A4961QEysvRAKpYIeXr0"
+GEMINI_KEY  = os.environ.get("GEMINI_KEY", "")
+YOUTUBE_KEY = os.environ.get("YOUTUBE_KEY", "")
 GEMINI_URL  = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_KEY}"
 
 def remove_markdown(text):
