@@ -196,9 +196,7 @@ textarea::placeholder{color:var(--text3)}
 
 <script>
 // ===== CONFIG =====
-var GROQ_KEY = "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";
-var YOUTUBE_KEY = "AIzaSyDEzPT5eFdjB56A4961QEysvRAKpYIeXr0";
-var GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+var ASK_URL = "/ask";
 
 // ===== نجوم =====
 (function(){
@@ -294,86 +292,6 @@ function setStep(n){
   }
 }
 
-// ===== Groq call =====
-async function callGroq(prompt){
-  var body={
-    model:'llama-3.3-70b-versatile',
-    messages:[
-      {role:'system',content:'أنت مساعد إسلامي متخصص في الفقه. تجيب بالعربية الفصحى البسيطة فقط بدون Markdown.'},
-      {role:'user',content:prompt}
-    ],
-    max_tokens:3000,
-    temperature:0.3
-  };
-  var r=await fetch(GROQ_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+GROQ_KEY},body:JSON.stringify(body)});
-  var d=await r.json();
-  if(d.error) throw new Error(d.error.message);
-  return d.choices[0].message.content;
-}
-
-// ===== YouTube =====
-async function searchYouTube(query){
-  try{
-    var q=encodeURIComponent(query+' فتوى');
-    var url='https://www.googleapis.com/youtube/v3/search?part=snippet&q='+q+'&type=video&maxResults=3&relevanceLanguage=ar&key='+YOUTUBE_KEY;
-    var r=await fetch(url);
-    var d=await r.json();
-    return (d.items||[]).map(function(item){
-      return{
-        youtube_id:item.id.videoId,
-        title:item.snippet.title,
-        channel:item.snippet.channelTitle,
-        link:'https://www.youtube.com/watch?v='+item.id.videoId
-      };
-    });
-  }catch(e){console.error('YouTube error:',e);return[];}
-}
-
-
-
-// ===== understand question =====
-async function understandQuestion(raw){
-  var prompt='أنت مساعد يفهم الأسئلة الدينية بأي أسلوب عامي أو فصيح.\nأجب بهذا الشكل فقط:\nQUESTION: [السؤال الفقهي بالعربية الفصحى]\nTOPIC: [الموضوع في كلمة أو كلمتين]\nSEARCH: [كلمات البحث في يوتيوب مثل: حكم الأكل في رمضان ابن باز]\n\nالسؤال: '+raw;
-  try{
-    var text=await callGroq(prompt);
-    var q=text.match(/QUESTION:\s*(.+)/),t=text.match(/TOPIC:\s*(.+)/),s=text.match(/SEARCH:\s*(.+)/);
-    return{
-      fiqh:q?q[1].trim():raw,
-      topic:t?t[1].trim():'',
-      ytSearch:s?s[1].trim():raw
-    };
-  }catch(e){return{fiqh:raw,topic:'',ytSearch:raw};}
-}
-
-// ===== search fatwas =====
-async function searchFatwas(fiqhQ){
-  var prompt='أنت مساعد متخصص في الفقه الإسلامي. لديك معرفة واسعة بفتاوى العلماء.\nقدّم 3 فتاوى للسؤال مع روابط حقيقية من مواقع موثوقة.\nروابط البحث الجاهزة التي يمكنك استخدامها:\n- islamqa: https://islamqa.info/ar/search?q=KEYWORD\n- islamweb: https://www.islamweb.net/ar/fatwa/search/?lang=A&idfatwacat=0&word=KEYWORD\n- dorar: https://dorar.net/feqhia?skey=KEYWORD\nاستبدل KEYWORD بكلمات البحث المناسبة للسؤال.\n\nالشكل المطلوب فقط:\nOPINIONS_START\nOPINION_START\nالعنوان: [اسم العالم أو الموقع]\nالنص: [ملخص الفتوى في 2-3 جمل بدون markdown]\nالمصدر_النص: [اسم الموقع]\nالرابط: [رابط كامل يبدأ بـ https://]\nOPINION_END\nOPINIONS_END\nSUMMARY_START\n[خلاصة عملية في جملة أو جملتين]\nSUMMARY_END\n\nالسؤال: '+fiqhQ;
-  return await callGroq(prompt);
-}
-
-// ===== parse fatwas =====
-function parseFatwas(text){
-  var opinions=[];
-  var blocks=text.match(/OPINION_START([\s\S]*?)OPINION_END/g)||[];
-  blocks.forEach(function(blk){
-    function get(name){var m=blk.match(new RegExp(name+':\\s*(.+)'));return m?m[1].trim():'';}
-    function getText(){var m=blk.match(/النص:\s*([\s\S]+?)(?=المصدر_النص:|الرابط:|OPINION_END)/);return m?m[1].trim():'';}
-    var link=get('الرابط');
-    if(link.toLowerCase()==='none')link='';
-    opinions.push({
-      title:removeMarkdown(get('العنوان')),
-      text:removeMarkdown(getText()),
-      source:removeMarkdown(get('المصدر_النص')),
-      link:link.startsWith('http')?link:'',
-      youtube_id:'',
-      type:'text'
-    });
-  });
-  var sm=text.match(/SUMMARY_START([\s\S]*?)SUMMARY_END/);
-  var summary=sm?removeMarkdown(sm[1].trim()):'';
-  return{opinions:opinions,summary:summary};
-}
-
 // ===== MAIN ask =====
 async function ask(){
   var q=document.getElementById('q').value.trim();
@@ -385,46 +303,29 @@ async function ask(){
   document.getElementById('fiqhCard').style.display='none';
   document.getElementById('stepsBox').style.display='block';
   fullSpeakText='';
+
   setStep(1);
-
-  try{
-    // خطوة 1: فهم السؤال
-    var understood=await understandQuestion(q);
-    if(understood.fiqh&&understood.fiqh!==q){
-      document.getElementById('fiqhText').textContent=understood.fiqh;
-      document.getElementById('fiqhCard').style.display='block';
-    }
-
-    // خطوة 2: البحث في الفتاوى + يوتيوب بالتوازي
+  try {
+    var r = await fetch(ASK_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({question: q})
+    });
     setStep(2);
-    var fatwasPromise=searchFatwas(understood.fiqh);
-    var ytPromise=searchYouTube(understood.ytSearch);
     setStep(3);
 
-    // انتظر الكل
-    var results=await Promise.all([fatwasPromise,ytPromise]);
-    var fatwasText=results[0],ytResults=results[1];
+    var d = await r.json();
+    if(d.error) throw new Error(d.error);
 
-    // parse
-    var parsed=parseFatwas(fatwasText);
-    var opinions=parsed.opinions;
-
-    // أضف الفيديوهات
-    ytResults.forEach(function(v){
-      opinions.push({
-        title:v.title,
-        text:'فيديو من قناة: '+v.channel,
-        source:'يوتيوب',
-        link:v.link,
-        youtube_id:v.youtube_id,
-        type:'video'
-      });
-    });
+    if(d.fiqh_question && d.fiqh_question !== q){
+      document.getElementById('fiqhText').textContent = d.fiqh_question;
+      document.getElementById('fiqhCard').style.display = 'block';
+    }
 
     document.getElementById('stepsBox').style.display='none';
-    renderAnswers({opinions:opinions,summary:parsed.summary,fiqh_question:understood.fiqh});
+    renderAnswers(d);
 
-  }catch(e){
+  } catch(e) {
     console.error(e);
     document.getElementById('stepsBox').style.display='none';
     document.getElementById('answersContent').innerHTML='<div style="background:rgba(226,75,74,0.1);border:1px solid rgba(226,75,74,0.2);border-radius:14px;padding:1rem;color:#F09595;font-size:14px">حدث خطأ: '+esc(e.message)+'</div>';
@@ -434,14 +335,26 @@ async function ask(){
 
 function renderAnswers(d){
   var container=document.getElementById('answersContent');
-  var opinions=d.opinions||[],summary=d.summary||'';
+  var opinions=d.opinions||[],summary=d.summary||'',hadiths=d.hadiths||[];
   var html='';
-  var counts={text:0,video:0};
+  var counts={text:0,video:0,hadith:hadiths.length};
   opinions.forEach(function(op){counts[op.type]=(counts[op.type]||0)+1;});
+
   var tags=[];
   if(counts.text)tags.push(counts.text+' فتوى');
+  if(hadiths.length)tags.push(hadiths.length+' حديث');
   if(counts.video)tags.push(counts.video+' فيديو');
-  html+='<div class="top-bar"><span>'+opinions.length+' نتائج'+(tags.length?' — '+tags.join(' · '):'')+'</span><button class="btn-speak-all" id="speakAllBtn" onclick="speakAll()"><i class="ti ti-volume"></i> استمع للكل</button></div>';
+
+  html+='<div class="top-bar"><span>'+(opinions.length+hadiths.length)+' نتائج'+(tags.length?' — '+tags.join(' · '):'')+'</span><button class="btn-speak-all" id="speakAllBtn" onclick="speakAll()"><i class="ti ti-volume"></i> استمع للكل</button></div>';
+
+  // عرض الأحاديث أولاً
+  hadiths.forEach(function(h){
+    html+='<div class="opinion-card" style="border-color:rgba(201,168,76,0.3)"><div class="opinion-header"><span class="type-badge" style="background:rgba(201,168,76,0.15);color:var(--gold)"><i class="ti ti-book" style="font-size:11px"></i> حديث نبوي</span><span class="opinion-title">الدرر السنية</span></div>';
+    html+='<div class="opinion-body" style="color:var(--gold-light);font-style:italic">"'+esc(h.text)+'"</div>';
+    html+='<div class="opinion-footer"><div class="src-name"><i class="ti ti-star" style="font-size:13px;color:var(--gold)"></i> درجة الحديث: '+esc(h.grade||'غير محدد')+'</div><a class="source-link" style="background:rgba(201,168,76,0.15);color:var(--gold);border-color:rgba(201,168,76,0.25)" href="https://dorar.net/hadith/search?q='+encodeURIComponent(h.text.substring(0,50))+'" target="_blank">تأكد من الدرر</a></div></div>';
+    fullSpeakText += 'حديث نبوي. ' + h.text + '. ';
+  });
+
   opinions.forEach(function(op){
     var tL=op.type==='video'?'فيديو':'فتوى مكتوبة',tC=op.type==='video'?'type-video':'type-text',tI=op.type==='video'?'ti-brand-youtube':'ti-file-text';
     html+='<div class="opinion-card"><div class="opinion-header"><span class="type-badge '+tC+'"><i class="ti '+tI+'" style="font-size:11px"></i> '+tL+'</span><span class="opinion-title">'+esc(op.title)+'</span></div>';
@@ -453,6 +366,7 @@ function renderAnswers(d){
     html+='</div></div>';
     fullSpeakText+=op.title+'. '+op.text+'. ';
   });
+
   if(summary){html+='<div class="summary-card"><div class="summary-lbl"><i class="ti ti-check" style="font-size:13px"></i> الخلاصة العملية</div><div class="summary-txt">'+esc(summary)+'</div></div>';fullSpeakText+='الخلاصة: '+summary+'. ';}
   container.innerHTML=html;
 }
