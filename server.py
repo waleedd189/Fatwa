@@ -215,12 +215,18 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         if self.path != "/ask":
-            self.send_response(404); self.end_headers(); return
-
-        length = int(self.headers.get("Content-Length", 0))
-        raw_q  = json.loads(self.rfile.read(length)).get("question", "")
+            self.send_response(404)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "Not Found"}).encode())
+            return
 
         try:
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length).decode("utf-8")
+            data = json.loads(body)
+            raw_q = data.get("question", "")
+
             print(f"Q: {raw_q}")
 
             if not GEMINI_KEY:
