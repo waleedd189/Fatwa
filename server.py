@@ -219,6 +219,9 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             print(f"Q: {raw_q}")
 
+            if not GEMINI_KEY:
+                raise Exception("API Key Missing: GEMINI_KEY is not set in environment variables.")
+
             # الخطوة 1: افهم السؤال
             fiqh_q, topic, yt_search, hadith_search = understand_question(raw_q)
             print(f"Fiqh: {fiqh_q}")
