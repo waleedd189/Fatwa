@@ -71,6 +71,8 @@ def gemini(prompt, system=""):
     except urllib.error.HTTPError as e:
         err_msg = e.read().decode()
         print(f"Gemini API Error: {e.code} - {err_msg}")
+        if "API_KEY_INVALID" in err_msg:
+            raise Exception("Invalid API Key: The Gemini key provided is incorrect or has expired.")
         raise Exception(f"Gemini API Error: {err_msg}")
 
 def gemini_search(prompt, system=""):
@@ -99,6 +101,8 @@ def gemini_search(prompt, system=""):
     except urllib.error.HTTPError as e:
         err_msg = e.read().decode()
         print(f"Gemini Search API Error: {e.code} - {err_msg}")
+        if "API_KEY_INVALID" in err_msg:
+            raise Exception("Invalid API Key: The Gemini key provided is incorrect or has expired.")
         raise Exception(f"Gemini Search API Error: {err_msg}")
 
 def search_youtube(query, max_results=3):
