@@ -3,8 +3,8 @@ import json, urllib.request, urllib.error, os, re, threading
 from urllib.parse import quote
 from html.parser import HTMLParser
 
-GEMINI_KEY  = "AIzaSyAQ.Ab8RN6JR5WE9PST8cY7as_aWRyBWlQPZ-QQ0kyw5i8eMYKab4w"
-YOUTUBE_KEY = "AIzaSyDEzPT5eFdjB56A4961QEysvRAKpYIeXr0"
+GEMINI_KEY  = os.environ.get("GEMINI_KEY", "")
+YOUTUBE_KEY = os.environ.get("YOUTUBE_KEY", "")
 GEMINI_URL  = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_KEY}"
 
 def remove_markdown(text):
@@ -48,6 +48,8 @@ def gemini(prompt, system=""):
     """استدعاء Gemini API"""
     contents = []
     if system:
+        # Gemini expects system instruction as a separate field or prepended to the first message
+        # Prepending is safer for older versions or simple calls
         contents.append({"role": "user", "parts": [{"text": system + "\n\n" + prompt}]})
     else:
         contents.append({"role": "user", "parts": [{"text": prompt}]})
@@ -62,9 +64,14 @@ def gemini(prompt, system=""):
         headers={"Content-Type": "application/json"},
         method="POST"
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        result = json.loads(resp.read())
-    return result["candidates"][0]["content"]["parts"][0]["text"]
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read())
+        return result["candidates"][0]["content"]["parts"][0]["text"]
+    except urllib.error.HTTPError as e:
+        err_msg = e.read().decode()
+        print(f"Gemini API Error: {e.code} - {err_msg}")
+        raise Exception(f"Gemini API Error: {err_msg}")
 
 def gemini_search(prompt, system=""):
     """Gemini مع Google Search مدمج"""
@@ -76,7 +83,7 @@ def gemini_search(prompt, system=""):
 
     payload = json.dumps({
         "contents": contents,
-        "tools": [{"google_search": {}}],
+        "tools": [{"google_search_retrieval": {}}],
         "generationConfig": {"maxOutputTokens": 3000, "temperature": 0.3}
     }).encode("utf-8")
 
@@ -85,9 +92,14 @@ def gemini_search(prompt, system=""):
         headers={"Content-Type": "application/json"},
         method="POST"
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        result = json.loads(resp.read())
-    return result["candidates"][0]["content"]["parts"][0]["text"]
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read())
+        return result["candidates"][0]["content"]["parts"][0]["text"]
+    except urllib.error.HTTPError as e:
+        err_msg = e.read().decode()
+        print(f"Gemini Search API Error: {e.code} - {err_msg}")
+        raise Exception(f"Gemini Search API Error: {err_msg}")
 
 def search_youtube(query, max_results=3):
     q = quote(query + " فتوى")
