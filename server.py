@@ -1,11 +1,34 @@
-from http.server import HTTPServer, SimpleHTTPRequestHandler
-import json, urllib.request, urllib.error, os, re, threading
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+import json, urllib.request, urllib.error, os, re, threading, time
 from urllib.parse import quote
 from html.parser import HTMLParser
+from collections import defaultdict, deque
 
 GEMINI_KEY  = os.environ.get("GEMINI_KEY", "")
 YOUTUBE_KEY = os.environ.get("YOUTUBE_KEY", "")
-GEMINI_URL  = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_KEY}"
+# المفتاح لم يعد في الـ URL — يُمرّر عبر Header لتجنّب ظهوره في اللوجات ورسائل الخطأ
+GEMINI_URL  = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+
+MAX_QUESTION_LEN = 1000
+
+# ===== Rate Limiting (بسيط، في الذاكرة، لكل IP) =====
+RATE_LIMIT_WINDOW = 60   # نافذة زمنية بالثواني
+RATE_LIMIT_MAX    = 15   # عدد الطلبات المسموح لكل IP خلال النافذة
+_rate_lock = threading.Lock()
+_rate_log  = defaultdict(deque)   # ip -> deque of timestamps
+
+def _is_rate_limited(ip):
+    now    = time.time()
+    cutoff = now - RATE_LIMIT_WINDOW
+    with _rate_lock:
+        log = _rate_log[ip]
+        while log and log[0] < cutoff:        # تجاهل الطوابع القديمة
+            log.popleft()
+        if len(log) >= RATE_LIMIT_MAX:
+            return True
+        log.append(now)
+        return False
+
 
 def remove_markdown(text):
     text = re.sub(r'#{1,6}\s*', '', text)
@@ -44,62 +67,45 @@ def extract_youtube_id(url):
         if m: return m.group(1)
     return ''
 
-def gemini(prompt, system=""):
-    """استدعاء Gemini API"""
-    contents = []
-    if system:
-        # Gemini expects system instruction as a separate field or prepended to the first message
-        # Prepending is safer for older versions or simple calls
-        contents.append({"role": "user", "parts": [{"text": system + "\n\n" + prompt}]})
-    else:
-        contents.append({"role": "user", "parts": [{"text": prompt}]})
+def _gemini_call(text, use_search=False):
+    """استدعاء Gemini موحّد: عادي أو مع Google Search."""
+    payload_obj = {
+        "contents": [{"role": "user", "parts": [{"text": text}]}],
+        "generationConfig": {
+            "maxOutputTokens": 3000 if use_search else 2000,
+            "temperature": 0.3,
+        },
+    }
+    if use_search:
+        payload_obj["tools"] = [{"google_search_retrieval": {}}]
 
-    payload = json.dumps({
-        "contents": contents,
-        "generationConfig": {"maxOutputTokens": 2000, "temperature": 0.3}
-    }).encode("utf-8")
-
+    payload = json.dumps(payload_obj).encode("utf-8")
     req = urllib.request.Request(
-        GEMINI_URL, data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST"
+        GEMINI_URL,
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "x-goog-api-key": GEMINI_KEY,        # المفتاح في Header
+        },
+        method="POST",
     )
+    label = "Gemini Search" if use_search else "Gemini"
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             result = json.loads(resp.read())
         return result["candidates"][0]["content"]["parts"][0]["text"]
     except urllib.error.HTTPError as e:
         err_msg = e.read().decode()
-        print(f"Gemini API Error: {e.code} - {err_msg}")
-        raise Exception(f"Gemini API Error: {err_msg}")
+        print(f"{label} API Error: {e.code} - {err_msg}")
+        if "API_KEY_INVALID" in err_msg:
+            raise Exception("مفتاح Gemini غير صحيح أو منتهي الصلاحية.")
+        raise Exception(f"خطأ في {label}: {err_msg}")
+
+def gemini(prompt, system=""):
+    return _gemini_call((system + "\n\n" + prompt) if system else prompt, use_search=False)
 
 def gemini_search(prompt, system=""):
-    """Gemini مع Google Search مدمج"""
-    contents = []
-    if system:
-        contents.append({"role": "user", "parts": [{"text": system + "\n\n" + prompt}]})
-    else:
-        contents.append({"role": "user", "parts": [{"text": prompt}]})
-
-    payload = json.dumps({
-        "contents": contents,
-        "tools": [{"google_search_retrieval": {}}],
-        "generationConfig": {"maxOutputTokens": 3000, "temperature": 0.3}
-    }).encode("utf-8")
-
-    req = urllib.request.Request(
-        GEMINI_URL, data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST"
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            result = json.loads(resp.read())
-        return result["candidates"][0]["content"]["parts"][0]["text"]
-    except urllib.error.HTTPError as e:
-        err_msg = e.read().decode()
-        print(f"Gemini Search API Error: {e.code} - {err_msg}")
-        raise Exception(f"Gemini Search API Error: {err_msg}")
+    return _gemini_call((system + "\n\n" + prompt) if system else prompt, use_search=True)
 
 def search_youtube(query, max_results=3):
     q = quote(query + " فتوى")
@@ -112,6 +118,9 @@ def search_youtube(query, max_results=3):
             data = json.loads(resp.read())
         videos = []
         for item in data.get("items", []):
+            # بعض النتائج (قنوات/قوائم) لا تحتوي على videoId
+            if "videoId" not in item.get("id", {}):
+                continue
             vid_id  = item["id"]["videoId"]
             snippet = item["snippet"]
             videos.append({
@@ -125,53 +134,25 @@ def search_youtube(query, max_results=3):
         print(f"YouTube error: {e}")
         return []
 
-def search_dorar(keywords, max_results=3):
-    try:
-        url = f"http://dorar.net/dorar_api.json?skey={quote(keywords)}"
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
-        results_html = data.get("ahadith", {}).get("result", "")
-        if not results_html:
-            return []
-        hadiths = []
-        texts = re.split(r'</?div[^>]*>|<br\s*/?>', results_html)
-        for t in texts:
-            clean = strip_html(t).strip()
-            if len(clean) > 40:
-                grade = ''
-                gm = re.search(r'(صحيح|حسن|ضعيف|موضوع)', clean)
-                if gm: grade = gm.group(1)
-                hadiths.append({"text": clean, "grade": grade})
-            if len(hadiths) >= max_results:
-                break
-        return hadiths
-    except Exception as e:
-        print(f"Dorar error: {e}")
-        return []
-
 def understand_question(raw):
     system = """أنت مساعد يفهم الأسئلة الدينية بأي أسلوب عامي أو فصيح.
 أجب بهذا الشكل فقط:
 QUESTION: [السؤال الفقهي بالعربية الفصحى]
 TOPIC: [الموضوع في كلمة أو كلمتين]
-SEARCH: [كلمات البحث في يوتيوب مثل: حكم الأكل في رمضان ابن باز]
-HADITH_SEARCH: [كلمات للبحث في الأحاديث مثل: الصيام رمضان]"""
+SEARCH: [كلمات البحث في يوتيوب مثل: حكم الأكل في رمضان ابن باز]"""
     try:
         text = gemini(raw, system)
         q = re.search(r'QUESTION:\s*(.+)', text)
         t = re.search(r'TOPIC:\s*(.+)',    text)
         s = re.search(r'SEARCH:\s*(.+)',   text)
-        h = re.search(r'HADITH_SEARCH:\s*(.+)', text)
         return (
             q.group(1).strip() if q else raw,
             t.group(1).strip() if t else '',
-            s.group(1).strip() if s else raw,
-            h.group(1).strip() if h else raw
+            s.group(1).strip() if s else raw
         )
     except Exception as e:
         print(f"Understand error: {e}")
-        return raw, '', raw, raw
+        return raw, '', raw
 
 def search_fatwas_text(fiqh_q):
     system = """أنت مساعد متخصص في الفقه الإسلامي.
@@ -202,6 +183,22 @@ class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=os.path.dirname(os.path.abspath(__file__)), **kwargs)
 
+    def _client_ip(self):
+        """عنوان العميل (مع احترام X-Forwarded-For لو وراء proxy)."""
+        fwd = self.headers.get("X-Forwarded-For")
+        if fwd:
+            return fwd.split(",")[0].strip()
+        return self.client_address[0]
+
+    def _send_json(self, status, obj):
+        data = json.dumps(obj, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -211,38 +208,56 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         if self.path != "/ask":
-            self.send_response(404); self.end_headers(); return
+            self._send_json(404, {"error": "غير موجود"})
+            return
 
-        length = int(self.headers.get("Content-Length", 0))
-        raw_q  = json.loads(self.rfile.read(length)).get("question", "")
+        # التحقق من المُدخلات
+        length = int(self.headers.get("Content-Length", 0) or 0)
+        if length <= 0 or length > 10000:
+            self._send_json(400, {"error": "طلب غير صالح"})
+            return
+        try:
+            body  = json.loads(self.rfile.read(length))
+            raw_q = (body.get("question") or "").strip()
+        except (json.JSONDecodeError, ValueError):
+            self._send_json(400, {"error": "صيغة JSON غير صالحة"})
+            return
+
+        if not raw_q:
+            self._send_json(400, {"error": "الرجاء كتابة سؤال"})
+            return
+        if len(raw_q) > MAX_QUESTION_LEN:
+            self._send_json(400, {"error": f"السؤال طويل جداً (الحد {MAX_QUESTION_LEN} حرف)"})
+            return
+
+        # Rate limiting
+        if _is_rate_limited(self._client_ip()):
+            self._send_json(429, {"error": "طلبات كثيرة جداً. حاول بعد دقيقة."})
+            return
 
         try:
             print(f"Q: {raw_q}")
 
             if not GEMINI_KEY:
-                raise Exception("API Key Missing: GEMINI_KEY is not set in environment variables.")
+                raise Exception("لم يتم تعيين GEMINI_KEY في متغيرات البيئة.")
 
             # الخطوة 1: افهم السؤال
-            fiqh_q, topic, yt_search, hadith_search = understand_question(raw_q)
+            fiqh_q, topic, yt_search = understand_question(raw_q)
             print(f"Fiqh: {fiqh_q}")
 
-            # الخطوة 2: يوتيوب والدرر في threads
-            yt_results    = []
-            dorar_results = []
+            # الخطوة 2: يوتيوب في thread
+            yt_results = []
 
             def fetch_yt():
                 yt_results.extend(search_youtube(yt_search, 3))
-            def fetch_dorar():
-                dorar_results.extend(search_dorar(hadith_search, 3))
 
             t1 = threading.Thread(target=fetch_yt)
-            t2 = threading.Thread(target=fetch_dorar)
-            t1.start(); t2.start()
+            t1.start()
 
             # الخطوة 3: ابحث في الفتاوى (Gemini + Google Search)
             full_text = search_fatwas_text(fiqh_q)
 
-            t1.join(); t2.join()
+            t1.join()
 
             # parse الفتاوى
             opinions  = []
@@ -278,28 +293,17 @@ class Handler(SimpleHTTPRequestHandler):
             summary_m = re.search(r'SUMMARY_START(.*?)SUMMARY_END', full_text, re.DOTALL)
             summary   = remove_markdown(summary_m.group(1).strip()) if summary_m else ""
 
-            response_data = json.dumps({
+            self._send_json(200, {
                 "original_question": raw_q,
                 "fiqh_question":     fiqh_q,
                 "topic":             topic,
                 "opinions":          opinions,
-                "summary":           summary,
-                "hadiths":           dorar_results
-            }, ensure_ascii=False).encode("utf-8")
-
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.end_headers()
-            self.wfile.write(response_data)
+                "summary":           summary
+            })
 
         except Exception as e:
             print(f"Error: {e}")
-            self.send_response(500)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.end_headers()
-            self.wfile.write(json.dumps({"error": str(e)}).encode())
+            self._send_json(500, {"error": str(e)})
 
     def log_message(self, fmt, *args):
         print(f"[{self.address_string()}] {fmt % args}")
@@ -307,4 +311,5 @@ class Handler(SimpleHTTPRequestHandler):
 if __name__ == "__main__":
     print("Running on: http://localhost:8000")
     print("Open: http://localhost:8000/index.html")
-    HTTPServer(("", 8000), Handler).serve_forever()
+    # ThreadingHTTPServer: معالجة عدة طلبات بالتوازي بدل طلب واحد في كل مرة
+    ThreadingHTTPServer(("", 8000), Handler).serve_forever()
