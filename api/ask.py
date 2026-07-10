@@ -133,67 +133,25 @@ def search_youtube(query, max_results=3):
         print(f"YouTube error: {e}")
         return []
 
-def search_dorar(keywords, max_results=3):
-    try:
-        url = f"http://dorar.net/dorar_api.json?skey={quote(keywords)}"
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
-        results_html = data.get("ahadith", {}).get("result", "")
-        if not results_html:
-            return []
-
-        # كل نتيجة في استجابة دورار عبارة عن زوج:
-        # <div class="hadith">نص الحديث</div>  ثم  <div class="hadith-info">الراوي/المحدث/الدرجة...</div>
-        # لازم نربطهم مع بعض كزوج واحد، مش نقسّمهم كأجزاء منفصلة
-        # (القسمة العشوائية القديمة كانت بتولّد نتيجة "معلومات بس من غير نص الحديث")
-        pattern = re.compile(
-            r'<div class="hadith"[^>]*>(.*?)</div>\s*<div class="hadith-info"[^>]*>(.*?)</div>',
-            re.DOTALL
-        )
-        hadiths = []
-        for matn_html, info_html in pattern.findall(results_html):
-            matn = strip_html(matn_html).strip()
-            matn = re.sub(r'^\d+\s*-\s*', '', matn).strip()  # إزالة رقم الترتيب في البداية
-            if len(matn) < 5:
-                continue
-
-            info_text = strip_html(info_html)
-            grade_m  = re.search(r'خلاصة حكم المحدث:\s*(.+)', info_text)
-            source_m = re.search(r'المصدر:\s*(.+?)\s*الصفحة', info_text)
-            grade  = grade_m.group(1).strip()  if grade_m  else ''
-            source = source_m.group(1).strip() if source_m else ''
-
-            hadiths.append({"text": matn, "grade": grade, "source": source})
-            if len(hadiths) >= max_results:
-                break
-        return hadiths
-    except Exception as e:
-        print(f"Dorar error: {e}")
-        return []
-
 def understand_question(raw):
     system = """أنت مساعد يفهم الأسئلة الدينية بأي أسلوب عامي أو فصيح.
 أجب بهذا الشكل فقط:
 QUESTION: [السؤال الفقهي بالعربية الفصحى]
 TOPIC: [الموضوع في كلمة أو كلمتين]
-SEARCH: [كلمات البحث في يوتيوب مثل: حكم الأكل في رمضان ابن باز]
-HADITH_SEARCH: [كلمات للبحث في الأحاديث مثل: الصيام رمضان]"""
+SEARCH: [كلمات البحث في يوتيوب مثل: حكم الأكل في رمضان ابن باز]"""
     try:
         text = gemini(raw, system)
         q = re.search(r'QUESTION:\s*(.+)', text)
         t = re.search(r'TOPIC:\s*(.+)',    text)
         s = re.search(r'SEARCH:\s*(.+)',   text)
-        h = re.search(r'HADITH_SEARCH:\s*(.+)', text)
         return (
             q.group(1).strip() if q else raw,
             t.group(1).strip() if t else '',
-            s.group(1).strip() if s else raw,
-            h.group(1).strip() if h else raw
+            s.group(1).strip() if s else raw
         )
     except Exception as e:
         print(f"Understand error: {e}")
-        return raw, '', raw, raw
+        return raw, '', raw
 
 def search_fatwas_text(fiqh_q):
     system = """أنت مساعد متخصص في الفقه الإسلامي.
@@ -274,24 +232,20 @@ class handler(BaseHTTPRequestHandler):
             if not GEMINI_KEY:
                 raise Exception("لم يتم تعيين GEMINI_KEY في متغيرات البيئة على Vercel.")
 
-            fiqh_q, topic, yt_search, hadith_search = understand_question(raw_q)
+            fiqh_q, topic, yt_search = understand_question(raw_q)
             print(f"Fiqh: {fiqh_q}")
 
-            yt_results    = []
-            dorar_results = []
+            yt_results = []
 
             def fetch_yt():
                 yt_results.extend(search_youtube(yt_search, 3))
-            def fetch_dorar():
-                dorar_results.extend(search_dorar(hadith_search, 3))
 
             t1 = threading.Thread(target=fetch_yt)
-            t2 = threading.Thread(target=fetch_dorar)
-            t1.start(); t2.start()
+            t1.start()
 
             full_text = search_fatwas_text(fiqh_q)
 
-            t1.join(); t2.join()
+            t1.join()
 
             opinions  = []
             for blk in re.findall(r'OPINION_START(.*?)OPINION_END', full_text, re.DOTALL):
@@ -330,8 +284,7 @@ class handler(BaseHTTPRequestHandler):
                 "fiqh_question":     fiqh_q,
                 "topic":             topic,
                 "opinions":          opinions,
-                "summary":           summary,
-                "hadiths":           dorar_results
+                "summary":           summary
             })
 
         except Exception as e:
