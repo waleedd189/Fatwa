@@ -8,8 +8,8 @@ from urllib.parse import quote
 from html.parser import HTMLParser
 from collections import defaultdict, deque
 
-GEMINI_KEY  = os.environ.get("GEMINI_KEY", "")
-YOUTUBE_KEY = os.environ.get("YOUTUBE_KEY", "")
+GEMINI_KEY  = os.environ.get("AQ.Ab8RN6L-MIe7WP1HVy9G1DqR5Rt5dAPgdCX3c4hGJbbOOfrUmg")
+YOUTUBE_KEY = os.environ.get("AIzaSyB4-e-z1mhX7t3pxmIEjlbqoz15nsqkngk")
 GEMINI_URL  = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
 MAX_QUESTION_LEN = 1000
