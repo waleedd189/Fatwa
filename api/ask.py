@@ -142,15 +142,29 @@ def search_dorar(keywords, max_results=3):
         results_html = data.get("ahadith", {}).get("result", "")
         if not results_html:
             return []
+
+        # كل نتيجة في استجابة دورار عبارة عن زوج:
+        # <div class="hadith">نص الحديث</div>  ثم  <div class="hadith-info">الراوي/المحدث/الدرجة...</div>
+        # لازم نربطهم مع بعض كزوج واحد، مش نقسّمهم كأجزاء منفصلة
+        # (القسمة العشوائية القديمة كانت بتولّد نتيجة "معلومات بس من غير نص الحديث")
+        pattern = re.compile(
+            r'<div class="hadith"[^>]*>(.*?)</div>\s*<div class="hadith-info"[^>]*>(.*?)</div>',
+            re.DOTALL
+        )
         hadiths = []
-        texts = re.split(r'</?div[^>]*>|<br\s*/?>', results_html)
-        for t in texts:
-            clean = strip_html(t).strip()
-            if len(clean) > 40:
-                grade = ''
-                gm = re.search(r'(صحيح|حسن|ضعيف|موضوع)', clean)
-                if gm: grade = gm.group(1)
-                hadiths.append({"text": clean, "grade": grade})
+        for matn_html, info_html in pattern.findall(results_html):
+            matn = strip_html(matn_html).strip()
+            matn = re.sub(r'^\d+\s*-\s*', '', matn).strip()  # إزالة رقم الترتيب في البداية
+            if len(matn) < 5:
+                continue
+
+            info_text = strip_html(info_html)
+            grade_m  = re.search(r'خلاصة حكم المحدث:\s*(.+)', info_text)
+            source_m = re.search(r'المصدر:\s*(.+?)\s*الصفحة', info_text)
+            grade  = grade_m.group(1).strip()  if grade_m  else ''
+            source = source_m.group(1).strip() if source_m else ''
+
+            hadiths.append({"text": matn, "grade": grade, "source": source})
             if len(hadiths) >= max_results:
                 break
         return hadiths
