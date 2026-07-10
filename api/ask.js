@@ -6,10 +6,6 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
   try {
     const { question } = req.body;
 
@@ -17,24 +13,39 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'الرجاء كتابة سؤال' });
     }
 
-    // Temporary response
+    const GEMINI_KEY = process.env.GEMINI_KEY;
+    if (!GEMINI_KEY) {
+      return res.status(500).json({ error: 'GEMINI_KEY غير معرف' });
+    }
+
+    // Gemini API Call
+    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: `أجب على السؤال الديني ده بفتوى موجزة وخلاصة: ${question}` }] }]
+      })
+    });
+
+    const data = await geminiResponse.json();
+    const answer = data.candidates?.[0]?.content?.parts?.[0]?.text || "لم أتمكن من الحصول على إجابة.";
+
     res.status(200).json({
       original_question: question,
       fiqh_question: question,
-      opinions: [
-        {
-          title: "اختبار Node.js",
-          text: "الـ API شغال الآن بـ Node.js. سنضيف Gemini لاحقاً.",
-          source: "نظام الفتاوى",
-          link: "",
-          type: "text"
-        }
-      ],
-      summary: "النظام يعمل. جاري إضافة الذكاء الاصطناعي.",
+      opinions: [{
+        title: "فتوى من Gemini",
+        text: answer,
+        source: "Google Gemini",
+        link: "",
+        type: "text"
+      }],
+      summary: answer.substring(0, 150) + "...",
       hadiths: []
     });
 
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: "حدث خطأ أثناء معالجة السؤال" });
   }
 }
