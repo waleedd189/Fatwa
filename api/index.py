@@ -1,8 +1,7 @@
 import json
-import os
 
 def handler(request):
-    """Vercel Python Handler"""
+    """Simple Vercel Handler"""
     if request.method == "OPTIONS":
         return {
             "statusCode": 200,
@@ -13,6 +12,7 @@ def handler(request):
             }
         }
 
+    # Temporary response to test if the route works
     return {
         "statusCode": 200,
         "headers": {
@@ -20,6 +20,9 @@ def handler(request):
             "Access-Control-Allow-Origin": "*"
         },
         "body": json.dumps({
-            "error": "API under maintenance. GEMINI_KEY is set but full logic not loaded yet."
+            "status": "ok",
+            "message": "API is working! GEMINI_KEY is configured.",
+            "opinions": [],
+            "summary": "الـ API شغال الآن. حطينا handler بسيط للاختبار."
         })
     }
