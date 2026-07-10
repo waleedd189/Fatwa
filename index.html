@@ -346,10 +346,10 @@ function renderAnswers(d){
   html+='<div class="top-bar"><span>'+(opinions.length+hadiths.length)+' نتائج'+(tags.length?' — '+tags.join(' · '):'')+'</span><button class="btn-speak-all" id="speakAllBtn" onclick="speakAll()"><i class="ti ti-volume"></i> استمع للكل</button></div>';
   
   hadiths.forEach(function(h){
-    html+='<div class="opinion-card" style="border-color:rgba(201,168,76,0.3)"><div class="opinion-header"><span class="type-badge" style="background:rgba(201,168,76,0.15);color:var(--gold)"><i class="ti ti-book" style="font-size:11px"></i> حديث نبوي</span><span class="opinion-title">الدرر السنية</span></div>';
+    html+='<div class="opinion-card" style="border-color:rgba(201,168,76,0.3)"><div class="opinion-header"><span class="type-badge" style="background:rgba(201,168,76,0.15);color:var(--gold)"><i class="ti ti-book" style="font-size:11px"></i> حديث نبوي</span><span class="opinion-title">'+(h.source?esc(h.source):'الدرر السنية')+'</span></div>';
     html+='<div class="opinion-body" style="color:var(--gold-light);font-style:italic">"'+esc(h.text)+'"</div>';
     html+='<div class="opinion-footer"><div class="src-name"><i class="ti ti-star" style="font-size:13px;color:var(--gold)"></i> درجة الحديث: '+esc(h.grade||'غير محدد')+'</div><a class="source-link" style="background:rgba(201,168,76,0.15);color:var(--gold);border-color:rgba(201,168,76,0.25)" href="https://dorar.net/hadith/search?q='+encodeURIComponent(h.text.substring(0,50))+'" target="_blank">تأكد من الدرر</a></div></div>';
-    fullSpeakText += 'حديث نبوي. ' + h.text + '. ';
+    fullSpeakText += 'حديث نبوي. ' + h.text + '. الدرجة: ' + (h.grade||'غير محدد') + '. ';
   });
 
   opinions.forEach(function(op){
