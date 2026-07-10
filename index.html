@@ -196,9 +196,9 @@ textarea::placeholder{color:var(--text3)}
 
 <script>
 // ===== CONFIG =====
-var ASK_URL = "/ask";
+var ASK_URL = "/api/ask";
 
-// ===== نجوم =====
+// باقي الكود كما هو (النسخة الأصلية مع التعديل البسيط فقط)
 (function(){
   var s=document.getElementById('stars');
   for(var i=0;i<80;i++){
@@ -208,7 +208,7 @@ var ASK_URL = "/ask";
   }
 })();
 
-// ===== PWA =====
+// PWA + Voice + Ask Function (كاملة)
 var deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',function(e){
   e.preventDefault();deferredPrompt=e;
@@ -231,7 +231,7 @@ if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').then(function(){console.log('SW registered');});
 }
 
-// ===== صوت =====
+// Voice recognition and speech (full original code)
 var rec=null,isRec=false,speaking=false,selectedVoice=null,fullSpeakText='';
 var allVoices=[];
 function loadVoices(){
@@ -266,7 +266,6 @@ function startRec(){
 }
 function stopRec(){isRec=false;if(rec)rec.stop();document.getElementById('micBtn').classList.remove('recording');document.getElementById('micLbl').textContent='سجّل سؤالك';document.getElementById('micMsg').textContent='';}
 
-// ===== helpers =====
 function removeMarkdown(text){
   if(!text)return '';
   text=text.replace(/#{1,6}\s*/g,'');
@@ -292,7 +291,6 @@ function setStep(n){
   }
 }
 
-// ===== MAIN ask =====
 async function ask(){
   var q=document.getElementById('q').value.trim();
   if(!q)return;
@@ -347,7 +345,6 @@ function renderAnswers(d){
   
   html+='<div class="top-bar"><span>'+(opinions.length+hadiths.length)+' نتائج'+(tags.length?' — '+tags.join(' · '):'')+'</span><button class="btn-speak-all" id="speakAllBtn" onclick="speakAll()"><i class="ti ti-volume"></i> استمع للكل</button></div>';
   
-  // عرض الأحاديث أولاً
   hadiths.forEach(function(h){
     html+='<div class="opinion-card" style="border-color:rgba(201,168,76,0.3)"><div class="opinion-header"><span class="type-badge" style="background:rgba(201,168,76,0.15);color:var(--gold)"><i class="ti ti-book" style="font-size:11px"></i> حديث نبوي</span><span class="opinion-title">الدرر السنية</span></div>';
     html+='<div class="opinion-body" style="color:var(--gold-light);font-style:italic">"'+esc(h.text)+'"</div>';
@@ -372,9 +369,6 @@ function renderAnswers(d){
 }
 
 function esc(t){var d=document.createElement('div');d.textContent=t||'';return d.innerHTML;}
-
-
-
 
 </script>
 </body>
