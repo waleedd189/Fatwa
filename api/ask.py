@@ -13,7 +13,7 @@ from collections import defaultdict, deque
 
 GEMINI_KEY  = os.environ.get("GEMINI_KEY", "")
 YOUTUBE_KEY = os.environ.get("YOUTUBE_KEY", "")
-GEMINI_URL  = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+GEMINI_URL  = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
 MAX_QUESTION_LEN = 1000
 
@@ -77,7 +77,7 @@ def _gemini_call(text, use_search=False):
         },
     }
     if use_search:
-        payload_obj["tools"] = [{"google_search_retrieval": {}}]
+        payload_obj["tools"] = [{"google_search": {}}]
 
     payload = json.dumps(payload_obj).encode("utf-8")
     req = urllib.request.Request(
