@@ -72,8 +72,9 @@ def _gemini_call(text, use_search=False):
     payload_obj = {
         "contents": [{"role": "user", "parts": [{"text": text}]}],
         "generationConfig": {
-            "maxOutputTokens": 3000 if use_search else 2000,
+            "maxOutputTokens": 4000 if use_search else 2500,
             "temperature": 0.3,
+            "thinkingConfig": {"thinkingBudget": 0},
         },
     }
     if use_search:
@@ -93,7 +94,17 @@ def _gemini_call(text, use_search=False):
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             result = json.loads(resp.read())
-        return result["candidates"][0]["content"]["parts"][0]["text"]
+        candidates = result.get("candidates") or []
+        if not candidates:
+            print(f"{label}: لا يوجد candidates في الرد: {result}")
+            return ""
+        cand  = candidates[0]
+        parts = (cand.get("content") or {}).get("parts") or []
+        texts = [p.get("text", "") for p in parts if p.get("text") and not p.get("thought")]
+        if not texts:
+            print(f"{label}: مفيش نص قابل للاستخدام. finishReason={cand.get('finishReason')}")
+            return ""
+        return "".join(texts)
     except urllib.error.HTTPError as e:
         err_msg = e.read().decode()
         print(f"{label} API Error: {e.code} - {err_msg}")
